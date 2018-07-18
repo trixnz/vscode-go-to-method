@@ -1,5 +1,5 @@
 # Go To Method
-The standard `Go to Symbol in File...` feature of VSCode can be noisy when you're only interested in functions. This extension adds a `Go to Method in File...` feature that allows you focus only on the functions declared in the file.
+The standard `Go to Symbol in File...` feature of [VS Code](https://github.com/Microsoft/vscode) can be noisy when you're only interested in functions. This extension adds a `Go to Method in File...` feature that allows you to focus only on the functions declared in the file.
 
 ## Installing
 * Launch VS Code Quick Open (Ctrl+P), paste the following command, and press enter:
