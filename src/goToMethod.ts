@@ -14,17 +14,29 @@ import {
 } from 'vscode';
 
 class SymbolEntry implements QuickPickItem {
-    public constructor(symbol: SymbolInformation) {
-        this.label = symbol.name;
-        this.description = symbol.containerName;
-        this.range = symbol.location.range;
+    private constructor() { }
+
+    public static fromSymbolInformation(symbol: SymbolInformation) {
+        const entry = new SymbolEntry();
+        entry.label = symbol.name;
+        entry.description = symbol.containerName;
+        entry.range = symbol.location.range;
+
+        return entry;
+    }
+
+    public static fromLabel(label: string) {
+        const entry = new SymbolEntry();
+        entry.label = label;
+
+        return entry;
     }
 
     public label!: string;
-    public description?: string | undefined;
-    public detail?: string | undefined;
-    public picked?: boolean | undefined;
-    public range: Range;
+    public description?: string;
+    public detail?: string;
+    public picked?: boolean;
+    public range?: Range;
 }
 
 export class GoToMethodProvider {
@@ -55,15 +67,18 @@ export class GoToMethodProvider {
         const activeTextEditor = window.activeTextEditor;
         if (!activeTextEditor) { return; }
 
-        const symbols = await this.getSymbols(activeTextEditor.document);
-        if (symbols.length === 0) { return; }
+        const symbolEntries = this.getSymbols(activeTextEditor.document)
+            .then(syms => {
+                if (syms.length === 0) {
+                    return [SymbolEntry.fromLabel('No symbols found')];
+                }
 
-        const symbolEntries = symbols
-            .filter(sym =>
-                sym.kind === SymbolKind.Method ||
-                sym.kind === SymbolKind.Function ||
-                sym.kind === SymbolKind.Constructor)
-            .map(sym => new SymbolEntry(sym));
+                return syms.filter(symbol =>
+                    symbol.kind === SymbolKind.Method ||
+                    symbol.kind === SymbolKind.Function ||
+                    symbol.kind === SymbolKind.Constructor)
+                    .map(sym => SymbolEntry.fromSymbolInformation(sym));
+            });
 
         const currentRange = activeTextEditor.visibleRanges.length > 0
             ? activeTextEditor.visibleRanges[0]
@@ -71,6 +86,8 @@ export class GoToMethodProvider {
 
         const pickedItem = await window.showQuickPick(symbolEntries, {
             onDidSelectItem: (selectedItem: SymbolEntry) => {
+                if (!selectedItem.range) { return; }
+
                 // Preview the selected item by highlighting the scope and scrolling to it
                 activeTextEditor.setDecorations(this.decorationType, [selectedItem.range]);
                 activeTextEditor.revealRange(selectedItem.range, TextEditorRevealType.Default);
@@ -80,7 +97,7 @@ export class GoToMethodProvider {
         // Clear decorations
         activeTextEditor.setDecorations(this.decorationType, []);
 
-        if (pickedItem) {
+        if (pickedItem && pickedItem.range) {
             const range = pickedItem.range;
 
             // Scroll to the selected function, positioning the cursor at the beginning
