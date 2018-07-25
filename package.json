@@ -2,7 +2,7 @@
     "name": "go-to-method",
     "displayName": "Go To Method",
     "description": "Adds the ability to go to only method symbols declared in the active document",
-    "version": "0.0.2",
+    "version": "0.1.0",
     "publisher": "trixnz",
     "homepage": "https://github.com/trixnz/vscode-go-to-method#readme",
     "repository": {
