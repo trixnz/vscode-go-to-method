@@ -1,6 +1,5 @@
 import {
     TextDocument,
-    SymbolInformation,
     ExtensionContext,
     QuickPickItem,
     commands,
@@ -10,17 +9,18 @@ import {
     TextEditorDecorationType,
     ThemeColor,
     Range,
-    Selection
+    Selection,
+    DocumentSymbol
 } from 'vscode';
 
 class SymbolEntry implements QuickPickItem {
     private constructor() { }
 
-    public static fromSymbolInformation(symbol: SymbolInformation) {
+    public static fromDocumentSymbol(symbol: DocumentSymbol, parentSymbol?: DocumentSymbol) {
         const entry = new SymbolEntry();
         entry.label = symbol.name;
-        entry.description = symbol.containerName;
-        entry.range = symbol.location.range;
+        entry.description = parentSymbol ? parentSymbol.name : '';
+        entry.range = symbol.range;
 
         return entry;
     }
@@ -54,8 +54,8 @@ export class GoToMethodProvider {
         context.subscriptions.push(this.decorationType);
     }
 
-    private async getSymbols(document: TextDocument): Promise<SymbolInformation[]> {
-        const result = await commands.executeCommand<SymbolInformation[]>(
+    private async getSymbols(document: TextDocument): Promise<DocumentSymbol[]> {
+        const result = await commands.executeCommand<DocumentSymbol[]>(
             'vscode.executeDocumentSymbolProvider',
             document.uri
         );
@@ -73,11 +73,26 @@ export class GoToMethodProvider {
                     return [SymbolEntry.fromLabel('No symbols found')];
                 }
 
-                return syms.filter(symbol =>
-                    symbol.kind === SymbolKind.Method ||
-                    symbol.kind === SymbolKind.Function ||
-                    symbol.kind === SymbolKind.Constructor)
-                    .map(sym => SymbolEntry.fromSymbolInformation(sym));
+                const newSymbols: SymbolEntry[] = [];
+
+                const addSymbols = (symbols: DocumentSymbol[], parentSymbol?: DocumentSymbol) => {
+                    for (const sym of symbols.filter(symbol =>
+                        symbol.kind === SymbolKind.Method ||
+                        symbol.kind === SymbolKind.Function ||
+                        symbol.kind === SymbolKind.Constructor)) {
+                        newSymbols.push(SymbolEntry.fromDocumentSymbol(sym, parentSymbol));
+                    }
+                };
+
+                // Add any symbols from the top most scope
+                addSymbols(syms);
+
+                // Now include any symbols that are children of the top most scope
+                for (const sym of syms) {
+                    addSymbols(sym.children, sym);
+                }
+
+                return newSymbols;
             });
 
         const currentRange = activeTextEditor.visibleRanges.length > 0
