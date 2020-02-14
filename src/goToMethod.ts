@@ -10,15 +10,18 @@ import {
     ThemeColor,
     Range,
     Selection,
-    DocumentSymbol
+    DocumentSymbol,
+    MarkdownString
 } from 'vscode';
 
 class SymbolEntry implements QuickPickItem {
     private constructor() { }
 
     public static fromDocumentSymbol(symbol: DocumentSymbol, parentSymbol?: DocumentSymbol) {
+        const markdownString = new MarkdownString('$(symbol-method) ' + symbol.name);
+
         const entry = new SymbolEntry();
-        entry.label = symbol.name;
+        entry.label = markdownString.value;
         entry.description = parentSymbol ? parentSymbol.name : '';
         entry.range = symbol.range;
 
